@@ -18,10 +18,12 @@ Reading from the keyboard and publishing to "cmd_vel"!
 Moving around:
    q    w    e
    a    s    d   
+     y    x
 
 q/e: turn left/right
 a/d: left/rigth
 w/s: forward/back
+y/x: up/down
 
 Velocities increase / decrease with multiple presses.
 SHIFT increases with factor 10
@@ -34,19 +36,23 @@ CTRL-C to quit
 """
 
 moveBindings = {
-		'w':(1,0,0),
-		's':(-1,0,0),
-		'a':(0,1,0),
-		'd':(0,-1,0),
-		'q':(0,0,1),
-		'e':(0,0,-1),
-		'W':(10,0,0),
-		'S':(-10,0,0),
-		'A':(0,10,0),
-		'D':(0,-10,0),
-		'Q':(0,0,10),
-		'E':(0,0,-10),
-	       }
+		'w':(1,0,0,0),
+		's':(-1,0,0,0),
+		'a':(0,1,0,0),
+		'd':(0,-1,0,0),
+		'q':(0,0,0,1),
+		'e':(0,0,0,-1),
+		'y':(0,0,1,0),
+		'x':(0,0,-1,0),
+		'W':(10,0,0,0),
+		'S':(-10,0,0,0),
+		'A':(0,10,0,0),
+		'D':(0,-10,0,0),
+		'Q':(0,0,0,10),
+		'E':(0,0,0,-10),
+		'Y':(0,0,10,0),
+		'X':(0,0,-10,0),
+		}
 headBindings = {
 	'u':(1, 1),	
 	'i':(1, 0),
@@ -93,10 +99,12 @@ if __name__=="__main__":
 
 	x_speed_step = 0.01
 	y_speed_step = 0.01
+	z_speed_step = 0.01
 	turn_speed_step = 0.01
 
 	x = 0
 	y = 0
+	z = 0
 	th = 0
 	status = 0
 
@@ -122,11 +130,12 @@ if __name__=="__main__":
 			key = getKey()
 			if key in moveBindings.keys():
 				x += moveBindings[key][0] * x_speed_step
-				
 				x = round(x, 2)
 				y += moveBindings[key][1] * y_speed_step
 				y = round(y, 2)
-				th += moveBindings[key][2] * turn_speed_step			
+				z += moveBindings[key][2] * z_speed_step
+				z = round(z, 2)
+				th += moveBindings[key][3] * turn_speed_step
 				th = round(th, 2)
 			elif key in headBindings.keys():
 				head_msg.positions[0] = head_pan_pos + headBindings[key][1] * head_pan_step
@@ -146,13 +155,14 @@ if __name__=="__main__":
 					break
 
 			twist = Twist()
-			twist.linear.x = x; twist.linear.y = y; twist.linear.z = 0
+			twist.linear.x = x; twist.linear.y = y; twist.linear.z = z
 			twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th
 			pub.publish(twist)
 			sys.stdout.write("\x1b[A")
 			sys.stdout.write("\x1b[A")
 			sys.stdout.write("\x1b[A")
-			print ("x:    " + str(x) + "     \ny:    " + str(y) + "     \nturn: " + str(th) + "     ")
+			sys.stdout.write("\x1b[A")
+			print ("x:    " + str(x) + "     \ny:    " + str(y) + "     \nz:    " + str(z) + "    \nturn: " + str(th) + "     ")
 
 	except Exception as e:
 		print(e)

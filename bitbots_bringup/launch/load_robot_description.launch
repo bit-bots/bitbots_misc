@@ -3,6 +3,7 @@
     
     <arg name="wolfgang" default="true"/>
     <arg name="davros" default="false"/>
+    <arg name="darwin" default="false"/>
     <arg name="sim" default="false"/>
     <arg name="sim_ns" default="sim_robot" />
     <arg name="davros_length" default="0" />
@@ -56,6 +57,22 @@
         <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
         <group ns="robot_description_kinematics">
             <rosparam command="load" file="$(find davros_moveit_config)/config/kinematics.yaml"/>
+        </group>
+    </group>
+
+    <group if="$(arg darwin)">
+        <param name="robot_description" command="$(find xacro)/xacro $(find darwin_description)/urdf/darwin.urdf.xacro --inorder" />
+        <param name="urdf" value="$(find darwin_description)/urdf/darwin.urdf.xacro" />
+        <param name="robot_description_semantic" textfile="$(find darwin_moveit_config)/config/darwin.srdf" />
+        <param name="robot_type_name" value="darwin"/>
+        <!-- Load updated joint limits (override information from URDF) -->
+        <group ns="robot_description_planning">
+            <rosparam command="load" file="$(find darwin_moveit_config)/config/joint_limits.yaml"/>
+        </group>
+
+        <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
+        <group ns="robot_description_kinematics">
+            <rosparam command="load" file="$(find darwin_moveit_config)/config/kinematics.yaml"/>
         </group>
     </group>
 

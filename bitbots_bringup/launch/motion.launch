@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="sim" default="false"/>
+    <arg name="viz" default="false"/>
     <arg name="walking" default="true" doc="start the walking" />
     <arg name="use_game_settings" default="false"/>
     <arg name="torqueless_mode" default="false" doc="start without torque, for example for testing the falling detection"/>
@@ -10,13 +11,15 @@
         <rosparam command="load" file="$(find bitbots_bringup)/config/game_settings.yaml" />
     </group>
 
-    <!-- if not in simulation, launch ros_control -->
+    <!-- if not in simulation or visualization, launch ros_control -->
     <group unless="$(arg sim)">
-        <include file="$(find bitbots_ros_control)/launch/ros_control.launch">
-            <arg name="use_game_settings" value="$(arg use_game_settings)"/>
-            <arg name="torqueless_mode" value="$(arg torqueless_mode)" />
-        </include>
-        <node name="set_volume" pkg="bitbots_bringup" type="set_volume.sh" args="100%" />
+        <group unless="$(arg viz)">
+            <include file="$(find bitbots_ros_control)/launch/ros_control.launch">
+                <arg name="use_game_settings" value="$(arg use_game_settings)"/>
+                <arg name="torqueless_mode" value="$(arg torqueless_mode)" />
+            </include>
+            <node name="set_volume" pkg="bitbots_bringup" type="set_volume.sh" args="100%" />
+        </group>
     </group>
 
     <!-- launch the animation server -->
@@ -35,6 +38,7 @@
     <!-- launch the hcm -->
     <include file="$(find bitbots_hcm)/launch/hcm.launch">
         <arg name="sim" value="$(arg sim)"/>
+        <arg name="viz" value="$(arg viz)"/>
         <arg name="use_game_settings" value="$(arg use_game_settings)"/>
     </include>
 

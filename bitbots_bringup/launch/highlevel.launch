@@ -8,6 +8,7 @@
     <arg name="sim_ns" default="/" />
     <arg name="simple" default="false" doc="Whether to use the simple behavior" />
     <arg name="teamcom" default="false"/>
+    <arg name="transformer" default="true"/>
     <arg name="use_game_settings" default="true"/>
     <arg name="vision" default="true"/>
     <arg name="vision_debug" default="false" doc="activates the debug output of the vision pipeline"/>
@@ -30,9 +31,11 @@
     </group>
 
     <!-- launch transformer -->
-    <include file="$(find humanoid_league_transform)/launch/transformer.launch">
-        <arg name="use_game_settings" value="$(arg use_game_settings)"/>
-    </include>
+    <group if="$(arg transformer)">
+        <include file="$(find humanoid_league_transform)/launch/transformer.launch">
+            <arg name="use_game_settings" value="$(arg use_game_settings)"/>
+        </include>
+    </group>
 
     <group if="$(arg teamcom)">
         <include file="$(find humanoid_league_team_communication)/launch/team_comm.launch">

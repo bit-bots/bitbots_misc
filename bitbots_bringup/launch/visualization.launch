@@ -3,6 +3,7 @@
     <!-- arguments -->
     <arg name="behavior" value="true" doc="if the behavior should be started" />
     <arg name="localization" value="false" doc="if the localization should be used" />
+    <arg name="motion" value="true" doc="if the motion should be started" />
     <arg name="game_controller" value="false" doc="if the game controller node should be started" />
     <arg name="use_game_settings" value="false" doc="whether game settings should be used" />
 
@@ -13,7 +14,7 @@
     <include file="$(find bitbots_bringup)/launch/load_robot_description.launch" />
 
     <!-- launch motion nodes -->
-    <include file="$(find bitbots_bringup)/launch/motion.launch">
+    <include if="$(arg motion)" file="$(find bitbots_bringup)/launch/motion.launch">
         <arg name="viz" value="true" />
         <arg name="use_game_settings" value="$(arg use_game_settings)" />
     </include>

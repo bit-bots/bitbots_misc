@@ -2,7 +2,7 @@
 <launch>
     <!-- set parameter -->
     <arg name="hcm" default="false"/>
-    <arg name="sim_ns" default="/" />
+    <arg name="sim_ns" default="/" doc="namespace for gazebo plugins" />
     <arg name="use_fake_walk" default="False"/>
 
     <param name="/simulation_active" value="true"/>

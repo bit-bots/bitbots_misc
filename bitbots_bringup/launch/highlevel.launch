@@ -5,7 +5,6 @@
     <arg name="localization" default="false"/>
     <arg name="motion" default="true"/>
     <arg name="sim" default="false"/>
-    <arg name="sim_ns" default="/" />
     <arg name="simple" default="false" doc="Whether to use the simple behavior" />
     <arg name="teamcom" default="false"/>
     <arg name="transformer" default="true"/>

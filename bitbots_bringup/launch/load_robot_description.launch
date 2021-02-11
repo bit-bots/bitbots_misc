@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="sim" default="false"/>
-    <arg name="sim_ns" default="sim_robot" />
+    <arg name="sim_ns" default="/" doc="namespace for gazebo plugins" />
     <arg name="fake_walk" default="False" doc="fake walk controller for simulation" />
 
     <param name="robot_description" command="$(find xacro)/xacro $(find wolfgang_description)/urdf/robot.urdf use_fake_walk:=$(arg fake_walk) sim_ns:=$(arg sim_ns)" />

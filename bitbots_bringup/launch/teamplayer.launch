@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="sim" default="false"/>
-    <arg name="sim_ns" default="/" />
     <arg name="use_game_settings" default="true"/>
     <arg name="motion" default="true"/>
     <arg name="behavior" default="true"/>

@@ -44,18 +44,18 @@ CTRL-C to quit
 """
 
 moveBindings = {
-		'w':(1,0,0),
-		's':(-1,0,0),
-		'a':(0,1,0),
-		'd':(0,-1,0),
-		'q':(0,0,1),
-		'e':(0,0,-1),
-		'W':(10,0,0),
-		'S':(-10,0,0),
-		'A':(0,10,0),
-		'D':(0,-10,0),
-		'Q':(0,0,10),
-		'E':(0,0,-10),
+		'w':(0.05,0,0),
+		's':(-0.05,0,0),
+		'q':(0,0.05,0),
+		'e':(0,-0.05,0),
+		'a':(0,0,0.2),
+		'd':(0,0,-0.2),
+		'W':(0.2,0,0),
+		'S':(-0.2,0,0),
+		'Q':(0,0.2,0),
+		'E':(0,-0.2,0),
+		'A':(0,0,0.2),
+		'D':(0,0,-0.2),
 	       }
 headBindings = {
 	'u':(1, 1),	
@@ -131,13 +131,9 @@ if __name__=="__main__":
 		while(1):
 			key = getKey()
 			if key in moveBindings.keys():
-				x += moveBindings[key][0] * x_speed_step
-				
-				x = round(x, 2)
-				y += moveBindings[key][1] * y_speed_step
-				y = round(y, 2)
-				th += moveBindings[key][2] * turn_speed_step			
-				th = round(th, 2)
+				x = moveBindings[key][0]
+				y = moveBindings[key][1]
+				th = moveBindings[key][2]			
 			elif key in headBindings.keys():
 				head_msg.positions[0] = head_pan_pos + headBindings[key][1] * head_pan_step
 				head_msg.positions[1] = head_tilt_pos + headBindings[key][0] * head_tilt_step

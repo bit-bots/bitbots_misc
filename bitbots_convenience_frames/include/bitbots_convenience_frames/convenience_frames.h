@@ -18,7 +18,7 @@ class ConvenienceFramesBroadcaster {
   geometry_msgs::TransformStamped tf_{geometry_msgs::TransformStamped()};
   tf2_ros::Buffer tfBuffer_{ros::Duration(1.0)};
   tf2_ros::TransformListener tfListener_{tfBuffer_};
-  std::string base_link_frame_, r_sole_frame_, l_sole_frame_, r_toe_frame_, l_toe_frame_, approach_frame_,
+  std::string base_link_frame_, r_sole_frame_, l_sole_frame_, r_toe_frame_, l_toe_frame_, approach_frame_, far_approach_frame_,
               ball_approach_frame_, ball_frame_, right_post_frame_, left_post_frame_, general_post_frame_;
 
   bool is_left_support{false};

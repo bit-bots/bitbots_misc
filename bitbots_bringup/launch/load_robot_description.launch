@@ -4,19 +4,34 @@
     <arg name="sim" default="false"/>
     <arg name="sim_ns" default="/" doc="namespace for gazebo plugins" />
     <arg name="fake_walk" default="False" doc="fake walk controller for simulation" />
+    <arg name="use_darwin" default="False" doc="Use Darwin_OP instead of wolfgang" />
 
-    <param name="robot_description" command="$(find xacro)/xacro $(find wolfgang_description)/urdf/robot.urdf use_fake_walk:=$(arg fake_walk) sim_ns:=$(arg sim_ns)" />
-    <param name="urdf" value="$(find wolfgang_description)/urdf/robot.urdf" />
-    <param name="robot_description_semantic" textfile="$(find wolfgang_moveit_config)/config/wolfgang.srdf" />
-    <param name="robot_type_name" value="Wolfgang"/>
-    <!-- Load updated joint limits (override information from URDF) -->
-    <group ns="robot_description_planning">
-        <rosparam command="load" file="$(find wolfgang_moveit_config)/config/joint_limits.yaml"/>
+    <group if="$(arg use_darwin)">
+        <param name="robot_description" command="$(find xacro)/xacro $(find darwin_description)/urdf/robot.urdf" />
+        <param name="urdf" value="$(find darwin_description)/urdf/robot.urdf" />
+        <param name="robot_description_semantic" textfile="$(find darwin_moveit_config)/config/darwin.srdf" />
+        <param name="robot_type_name" value="Darwin"/>
+        <group ns="robot_description_planning">
+            <rosparam command="load" file="$(find darwin_moveit_config)/config/joint_limits.yaml"/>
+        </group>
+        <group ns="robot_description_kinematics">
+            <rosparam command="load" file="$(find darwin_moveit_config)/config/kinematics.yaml"/>
+        </group>
     </group>
 
-    <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
-    <group ns="robot_description_kinematics">
-        <rosparam command="load" file="$(find wolfgang_moveit_config)/config/kinematics.yaml"/>
+    <group unless="$(arg use_darwin)">
+        <param name="robot_description" command="$(find xacro)/xacro $(find wolfgang_description)/urdf/robot.urdf use_fake_walk:=$(arg fake_walk) sim_ns:=$(arg sim_ns)" />
+        <param name="urdf" value="$(find wolfgang_description)/urdf/robot.urdf" />
+        <param name="robot_description_semantic" textfile="$(find wolfgang_moveit_config)/config/wolfgang.srdf" />
+        <param name="robot_type_name" value="Wolfgang"/>
+        <!-- Load updated joint limits (override information from URDF) -->
+        <group ns="robot_description_planning">
+            <rosparam command="load" file="$(find wolfgang_moveit_config)/config/joint_limits.yaml"/>
+        </group>
+        <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
+        <group ns="robot_description_kinematics">
+            <rosparam command="load" file="$(find wolfgang_moveit_config)/config/kinematics.yaml"/>
+        </group>
     </group>
 
     <!-- publish tfs, change topic depending if the simulation is used -->

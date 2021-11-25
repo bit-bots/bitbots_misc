@@ -53,12 +53,12 @@ walkready = JointCommand(
     positions=[
         0.0,  # HeadPan
         0.0,  # HeadTilt
-        0.0,  # LShoulderPitch
+        math.radians(75.27),  # LShoulderPitch
         0.0,  # LShoulderRoll
-        0.79,  # LElbow
-        0.0,  # RShoulderPitch
+        math.radians(35.86),  # LElbow
+        math.radians(-75.58),  # RShoulderPitch
         0.0,  # RShoulderRoll
-        -0.79,  # RElbow
+        math.radians(-36.10),  # RElbow
         -0.0112,  # LHipYaw
         0.0615,  # LHipRoll
         0.4732,  # LHipPitch
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     walk_kick_pub = rospy.Publisher("kick", Bool, queue_size=1)
     joint_pub = rospy.Publisher("DynamixelController/command", JointCommand, queue_size=1)
 
-    reset_robot = rospy.ServiceProxy("/initial_pose", Empty)
+    reset_robot = rospy.ServiceProxy("/reset_pose", Empty)
     reset_ball = rospy.ServiceProxy("/reset_ball", Empty)
 
     print(msg)
@@ -328,9 +328,8 @@ if __name__ == "__main__":
             sys.stdout.write("\x1b[A")
             sys.stdout.write("\x1b[A")
             sys.stdout.write("\x1b[A")
-            sys.stdout.write("\x1b[A")
             print(
-                f"x:    {x}          \ny:    {y}          \nturn: {th}          \n\nhead pan: {head_pan_pos:.2f}          \nhead tilt: {head_tilt_pos:.2f}          ")
+                f"x:    {x}          \ny:    {y}          \nturn: {th}          \n\n")
 
     except Exception as e:
         print(e)

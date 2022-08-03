@@ -109,7 +109,7 @@ def set_parameters_of_other_node(own_node: Node,
                                  other_node_name: str,
                                  parameter_names: List[str],
                                  parameter_values: List[Any],
-                                 service_timeout_sec: float = 20.0) -> bool:
+                                 service_timeout_sec: float = 20.0) -> List[bool]:
     """
     Used to set parameters of another running node.
     Returns a list of booleans indicating success or failure.

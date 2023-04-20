@@ -11,6 +11,9 @@ from bitbots_msgs.msg import KickGoal, KickAction, KickFeedback
 from geometry_msgs.msg import Vector3, Quaternion
 from sensor_msgs.msg import JointState, Imu
 import rospkg
+from launch import LaunchDescription
+# from launch_ros.actions import Node as LaunchNode
+import time
 
 
 # ros1 imports? 
@@ -28,7 +31,7 @@ This script tests whether a robot is ready to play a game, and if not, what spec
 """
 
 
-class bcolors:
+class Bcolors:
     """
     colors used for highlighting in the terminal ui
     """
@@ -42,93 +45,96 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def print_warn(str):
-    print(bcolors.WARNING + str + bcolors.ENDC)
+    print(Bcolors.WARNING + str + Bcolors.ENDC)
 
 def print_info(str):
-    print(bcolors.OKGREEN + str + bcolors.ENDC)
+    print(Bcolors.OKGREEN + str + Bcolors.ENDC)
 
 def input_info(str) -> str:
-    return input(bcolors.OKBLUE + str + bcolors.ENDC)
+    return input(Bcolors.OKBLUE + str + Bcolors.ENDC)
 
 
-ACCEL_LIMIT = 35
-ANGULAR_VEL_LIMIT = 10
-def imu_callback(msg:Imu):
-    """
-    prints a warning if the measured acceleration or velocity is over some threshold
-    """
-    for accel in [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]:
-        if abs(accel) > ACCEL_LIMIT:
-            print_warn("IMU over accel limit! Orientation estimation will suffer.\n")
-    for angular_vel in [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]:
-        if abs(angular_vel) > ANGULAR_VEL_LIMIT:
-            print_warn("IMU over angular vel limit! Orientation estimation will suffer.\n")
+class RobotTestNode(Node):
+    def __init__(self, node_name:str="Robot_Test_Node") -> None:
+        super().__init__(node_name)
+        self.ACCEL_LIMIT = 35
+        self.ANGULAR_VEL_LIMIT = 10
+        self.got_pwm = False
 
-got_pwm = False
-def pwm_callback(msg:JointState):
-    """
-    prints a warning if a servos effort value is over some threshold
-    """
-    global got_pwm
-    got_pwm = True
-    for effort in msg.effort:
-        if effort == 100:
-            print_warn("Servo reported max PWM value. It is working at its limit!\n")
+    def imu_callback(self, msg:Imu):
+        """
+        prints a warning if the measured acceleration or velocity is over some threshold
+        """
+        for accel in [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]:
+            if abs(accel) > self.ACCEL_LIMIT:
+                print_warn("IMU over accel limit! Orientation estimation will suffer.\n")
+        for angular_vel in [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]:
+            if abs(angular_vel) > self.ANGULAR_VEL_LIMIT:
+                print_warn("IMU over angular vel limit! Orientation estimation will suffer.\n")
 
+    def pwm_callback(self, msg:JointState):
+        """
+        prints a warning if a servos effort value is over some threshold
+        """
+        self.got_pwm = True
+        for effort in msg.effort:
+            if effort == 100:
+                print_warn("Servo reported max PWM value. It is working at its limit!\n")
 
-def is_motion_started(node:Node):
-    """
-    checks whether all motion nodes did start successfully
-    """
-    node_names = node.get_node_names("/")
-    started = True
-    nodes_in_motion = {"/ros_control", "/hcm", "/walking", "/animation", "/dynamic_kick", "/motion_odometry", "/odometry_fuser", "/DynupNode"}
-    for node in nodes_in_motion:
-        if not node in node_names:
-            print_info(F"{node} not running")
-            started = False
-    return started
+    def is_motion_started(self):
+        """
+        checks whether all motion nodes did start successfully
+        """
+        node_names = self.get_node_names("/")
+        started = True
+        nodes_in_motion = {"/ros_control", "/hcm", "/walking", "/animation", "/dynamic_kick", "/motion_odometry", "/odometry_fuser", "/DynupNode"}
+        for node in nodes_in_motion:
+            if not node in node_names:
+                print_info(F"{node} not running")
+                started = False
+        return started
+    
+    def generate_launch_description():
+        return LaunchDescription([
+            Node(
+                package='turtlesim',
+                namespace='turtlesim1',
+                executable='turtlesim_node',
+                name='sim'
+            ),
+        ])
+    
+    def test(self) -> None:
+        print_info("### This script will check the robot hardware and motions. Please follow the instructions\n")
+
+        # initialize subscribers
+        imu_sub:Subscription = self.create_subscription(Imu, "imu/data", self.imu_callback)
+        pwm_sub:Subscription = self.create_subscription(JointState, "servo_PWM", self.pwm_callback)
+
+        # start necessary software
+        print_info("First the motion software will be started. Please hold the robot, turn on servo power and press enter.\n")
+        input_info("Press Enter to continue...")
+
+        rospack = rospkg.RosPack()
+        path_to_launch_file = rospack.get_path('bitbots_bringup') + "/launch/motion_standalone.launch"
+
+        rclpy.
+
+        time.sleep(5)
+        while True:
+            if self.is_motion_started():
+                time.sleep(5)
+                break
+            else:
+                print_info("Waiting for software to be started \n")
+                time.sleep(1)
+        print_info("\n\n")
 
 
 if __name__ == "__main__":
-    print_info("### This script will check the robot hardware and motions. Please follow the instructions\n")
-
     rclpy.init(args=None)
-    test_node:Node = rclpy.create_node("test_node")
-
-    # initialize subscribers
-    imu_sub:Subscription = test_node.create_subscription(Imu, "imu/data", imu_callback)
-    pwm_sub:Subscription = test_node.create_subscription(JointState, "servo_PWM", imu_callback)
-
-    # start necessary software
-    print_info("First the motion software will be started. Please hold the robot, turn on servo power and press enter.\n")
-    input_info("Press Enter to continue...")
-
-
-    uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-    roslaunch.configure_logging(uuid)
-    rospack = rospkg.RosPack()
-    launch = roslaunch.parent.ROSLaunchParent(uuid, [
-        rospack.get_path('bitbots_bringup') + "/launch/motion_standalone.launch"])
-    launch.start()
-    rospy.sleep(5)
-    while True:
-        if is_motion_started():
-            rospy.sleep(5)
-            break
-        else:
-            print_info("Waiting for software to be started \n")
-            rospy.sleep(1)
-    print_info("\n\n")
-
-
-
-
-
-
-
-
-
+    node = RobotTestNode()
+    node.test()
 
 
     # # check diagnostic status

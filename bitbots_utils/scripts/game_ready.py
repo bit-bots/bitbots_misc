@@ -3,21 +3,21 @@ import os
 import rclpy
 from rclpy.node import Node
 from rclpy.subscription import Subscription
-from bitbots_msgs.msg import FootPressure
+# from bitbots_msgs.msg import FootPressure
 from diagnostic_msgs.msg import DiagnosticStatus
 from geometry_msgs.msg import Twist
 from std_srvs.srv import Empty
-from bitbots_msgs.msg import KickGoal, KickAction, KickFeedback
+# from bitbots_msgs.msg import KickGoal, KickAction, KickFeedback
 from geometry_msgs.msg import Vector3, Quaternion
 from sensor_msgs.msg import JointState, Imu
-import rospkg
-from launch import LaunchDescription
 # from launch_ros.actions import Node as LaunchNode
 import time
+import subprocess
 
 
 # ros1 imports? 
 
+# import rospkg
 # import rosnode
 # import roslaunch
 # import rostopic
@@ -60,6 +60,10 @@ class RobotTestNode(Node):
         self.ACCEL_LIMIT = 35
         self.ANGULAR_VEL_LIMIT = 10
         self.got_pwm = False
+        self.diag_status = None
+        self.had_diag_error = False
+        self.had_diag_stale = False
+        self.had_diag_warn = False
 
     def imu_callback(self, msg:Imu):
         """
@@ -83,52 +87,106 @@ class RobotTestNode(Node):
 
     def is_motion_started(self):
         """
-        checks whether all motion nodes did start successfully
+        checks whether all motion nodes did start successfully @TODO gerade disabled
         """
-        node_names = self.get_node_names("/")
+        node_names = self.get_node_names()
         started = True
-        nodes_in_motion = {"/ros_control", "/hcm", "/walking", "/animation", "/dynamic_kick", "/motion_odometry", "/odometry_fuser", "/DynupNode"}
+        nodes_in_motion = {"ros_control", "hcm", "walking", "animation", "dynamic_kick", "motion_odometry", "odometry_fuser", "DynupNode"}
         for node in nodes_in_motion:
             if not node in node_names:
                 print_info(F"{node} not running")
                 started = False
         return started
-    
-    def generate_launch_description():
-        return LaunchDescription([
-            Node(
-                package='turtlesim',
-                namespace='turtlesim1',
-                executable='turtlesim_node',
-                name='sim'
-            ),
-        ])
-    
+
+    def diagnostic_callback(self, msg: DiagnosticStatus):
+        """
+        Sets global variables to inform about the diagnostic status of the robot
+        """
+        self.diag_status = msg.level
+        if msg.level == DiagnosticStatus.WARN:
+            self.had_diag_warn = True
+        elif msg.level == DiagnosticStatus.ERROR:
+            self.had_diag_error = True
+        elif msg.level == DiagnosticStatus.STALE:
+            self.had_diag_stale = True
+
+
     def test(self) -> None:
-        print_info("### This script will check the robot hardware and motions. Please follow the instructions\n")
+        try:
+            print_info("### This script will check the robot hardware and motions. Please follow the instructions\n")
 
-        # initialize subscribers
-        imu_sub:Subscription = self.create_subscription(Imu, "imu/data", self.imu_callback)
-        pwm_sub:Subscription = self.create_subscription(JointState, "servo_PWM", self.pwm_callback)
+            # initialize subscribers
+            imu_sub:Subscription = self.create_subscription(Imu, "imu/data", self.imu_callback, 10)
+            pwm_sub:Subscription = self.create_subscription(JointState, "servo_PWM", self.pwm_callback, 10)
 
-        # start necessary software
-        print_info("First the motion software will be started. Please hold the robot, turn on servo power and press enter.\n")
-        input_info("Press Enter to continue...")
+            # start necessary software
+            print_info("First the motion software will be started. Please hold the robot, turn on servo power and press enter.\n")
+            input_info("Press Enter to continue...")
 
-        rospack = rospkg.RosPack()
-        path_to_launch_file = rospack.get_path('bitbots_bringup') + "/launch/motion_standalone.launch"
+            motion = subprocess.Popen(["ros2 launch bitbots_bringup motion_standalone.launch"], shell=True, stdout=subprocess.DEVNULL)
 
-        rclpy.
+            # check if motion started successfully
+            time.sleep(5)
+            while True:
+                if self.is_motion_started():
+                    time.sleep(5)
+                    print_info("Motion started successfully \n")
+                    break
+                else:
+                    print_info("Waiting for software to be started \n")
+                    time.sleep(1)
+            print_info("\n\n")
 
-        time.sleep(5)
-        while True:
-            if self.is_motion_started():
-                time.sleep(5)
-                break
+            # check diagnostic status
+            print_info("Will check diagnostic status of robot.\n")
+            diag_sub = self.create_subscription(DiagnosticStatus, "diagnostics_toplevel_state", self.diagnostic_callback, 10)
+            time.sleep(3)
+
+            if not (self.had_diag_stale or self.had_diag_warn or self.had_diag_error):
+                print_info("    Diagnostic status okay.")
             else:
-                print_info("Waiting for software to be started \n")
-                time.sleep(1)
-        print_info("\n\n")
+                print_warn("    Diagnostics report problem. Please use rqt_monitor to investigate.")
+                if self.had_diag_error:
+                    print_warn("    There were errors.")
+                if self.had_diag_warn:
+                    print_warn("    There were warnings.")
+                if self.had_diag_stale:
+                    print_warn("    There were stales.")
+                input_info("press enter when the issue is resolved")
+                self.had_diag_stale = False
+                self.had_diag_warn = False
+                self.had_diag_error = False
+            print_info("\n\n")
+
+            # # check publishing frequency of imu, servos, pwm, goals, pressure, robot_state
+            # # the topics which will be checked with minimal publishing rate
+            # topics_to_check = {"imu/data": 900, "joint_states": 900, "robot_state": 900, "foot_pressure_left/raw": 900,
+            #                 "foot_pressure_left/filtered": 900, "foot_pressure_right/raw": 900,
+            #                 "foot_pressure_right/filtered": 900, "core/vdxl": 9, "diagnostics_toplevel_state": 9}
+            # rts = []
+            # for topic in topics_to_check.keys():
+            #     msg_class, real_topic, _ = rostopic.get_topic_class(topic)
+            #     if real_topic is None or msg_class is None:
+            #         print_warn(F"Problem with topic {topic}")
+            #     else:
+            #         rt = rostopic.ROSTopicHz(-1)
+            #         rt_sub = rospy.Subscriber(topic, msg_class, rt.callback_hz, callback_args=topic, tcp_nodelay=True)
+            #         rts.append((rt, rt_sub))
+            # print_info("Please wait a few seconds for publishing rates of topics to be evaluated\n")
+            # rospy.sleep(5)
+            # print_info("Topics have been evaluated:\n")
+            # i = 0
+            # for topic in topics_to_check.keys():
+            #     rate = rts[i][0].get_hz(topic)[0]
+            #     if rate is None or rate < topics_to_check[topic]:
+            #         print_warn(F"  Low rate on Topic {topic}: {round(rate, 2)} \n")
+            #     else:
+            #         print_info(F"  Okay rate Topic {topic}: {round(rate, 2)} \n")
+            #     i += 1
+
+        except Exception as ex:
+            motion.terminate()
+            raise ex
 
 
 if __name__ == "__main__":
@@ -137,52 +195,7 @@ if __name__ == "__main__":
     node.test()
 
 
-    # # check diagnostic status
-    # print_info("Will check diagnostic status of robot.\n")
-    # diag_sub = rospy.Subscriber("diagnostics_toplevel_state", DiagnosticStatus, diagnostic_cb, tcp_nodelay=True)
-    # rospy.sleep(3)
 
-    # if not (had_diag_stale or had_diag_warn or had_diag_error):
-    #     print_info("    Diagnostic status okay.")
-    # else:
-    #     print_warn("    Diagnostics report problem. Please use rqt_monitor to investigate.")
-    #     if had_diag_error:
-    #         print_warn("    There were errors.")
-    #     if had_diag_warn:
-    #         print_warn("    There were warnings.")
-    #     if had_diag_stale:
-    #         print_warn("    There were stales.")
-    #     input_info("press enter when the issue is resolved")
-    #     had_diag_stale = False
-    #     had_diag_warn = False
-    #     had_diag_error = False
-    # print_info("\n\n")
-
-    # # check publishing frequency of imu, servos, pwm, goals, pressure, robot_state
-    # # the topics which will be checked with minimal publishing rate
-    # topics_to_check = {"imu/data": 900, "joint_states": 900, "robot_state": 900, "foot_pressure_left/raw": 900,
-    #                    "foot_pressure_left/filtered": 900, "foot_pressure_right/raw": 900,
-    #                    "foot_pressure_right/filtered": 900, "core/vdxl": 9, "diagnostics_toplevel_state": 9}
-    # rts = []
-    # for topic in topics_to_check.keys():
-    #     msg_class, real_topic, _ = rostopic.get_topic_class(topic)
-    #     if real_topic is None or msg_class is None:
-    #         print_warn(F"Problem with topic {topic}")
-    #     else:
-    #         rt = rostopic.ROSTopicHz(-1)
-    #         rt_sub = rospy.Subscriber(topic, msg_class, rt.callback_hz, callback_args=topic, tcp_nodelay=True)
-    #         rts.append((rt, rt_sub))
-    # print_info("Please wait a few seconds for publishing rates of topics to be evaluated\n")
-    # rospy.sleep(5)
-    # print_info("Topics have been evaluated:\n")
-    # i = 0
-    # for topic in topics_to_check.keys():
-    #     rate = rts[i][0].get_hz(topic)[0]
-    #     if rate is None or rate < topics_to_check[topic]:
-    #         print_warn(F"  Low rate on Topic {topic}: {round(rate, 2)} \n")
-    #     else:
-    #         print_info(F"  Okay rate Topic {topic}: {round(rate, 2)} \n")
-    #     i += 1
 
     # # check pressure values when robot in air
     # print_info("\n\n")

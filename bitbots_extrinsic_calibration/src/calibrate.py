@@ -182,7 +182,7 @@ def xy_robot_to_img(x,y, robot_x, robot_y, robot_yaw):
     p_img = (p_corner[0][0] / 0.01, p_corner[1][0] / 0.01)
     return p_img
 
-def objective(t : optuna.Trial, viz=False):
+def objective(t : optuna.Trial, viz=False, skip=0):
     ## camera projection parameters
     fov_x_estimate = 1336
     fov_y_estimate = 1334
@@ -286,7 +286,9 @@ def objective(t : optuna.Trial, viz=False):
     cam_model.width = c.width//c.binning_x # slightly hacky
     cam_model.height = c.height//c.binning_y # slightly hacky
     ipm.set_camera_info(c)
-    for ros_img , cv_img, segmentation in zip(images, cv_images, segmentations):
+    for i, (ros_img , cv_img, segmentation) in enumerate(zip(images, cv_images, segmentations)):
+        if skip > 0 and i % skip != 0:
+            continue
         class_id = 1
         
         segmentation_mask = np.zeros_like(segmentation[0], dtype=np.float32)
@@ -335,13 +337,13 @@ def objective(t : optuna.Trial, viz=False):
 # e_1 = trial([-0.5, -3.25, math.radians(90), 0, 0, -0.1, 0])
 # print("e-1:", e_1)
 
+
 study = optuna.create_study(direction="minimize")
 study.optimize(objective, n_trials=100)
-
 print(study.best_params)
-
 objective(study.best_trial, viz=True)
 
 #current_best = {'robot_x': -0.2497426051059045, 'robot_y': -3.7317841870621034, 'robot_yaw': 1.5570264819927397, 'head_pitch_offset': -0.1940921501909509, 'head_roll_offset': -0.035970377641765736}
 
-#objective(optuna.trial.FixedTrial(current_best), viz=True)
+#current_best = {'robot_x': -0.03684253459341897, 'robot_y': -3.665039354192567, 'robot_yaw': 1.6768331818925772, 'imu_pitch_offset': -0.18328193974257673, 'imu_roll_offset': -0.08188669891941691, 'head_pitch_offset': -0.10769672391947485, 'head_roll_offset': -0.15338153883549502}
+#objective(optuna.trial.FixedTrial(current_best), viz=True, skip=20)

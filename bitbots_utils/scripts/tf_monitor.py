@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import time
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 
 import rclpy
-from rclpy.node import Node
 import tf2_ros
 from tf2_msgs.msg import TFMessage
 
@@ -18,6 +17,7 @@ class TFMonitor:
         :param frame_a: The start frame of the monitored chain
         :param frame_b: The end frame of the monitored chain
         """
+
         def deque_1000():
             """Construct a deque that stores at most 1000 items"""
             return deque(maxlen=1000)
@@ -42,13 +42,13 @@ class TFMonitor:
             # Wait for the chain
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-            print(f'Waiting for transform chain to become available between {frame_a} and {frame_b}...')
+            print(f"Waiting for transform chain to become available between {frame_a} and {frame_b}...")
             while rclpy.ok():
-                if self.tf_buffer.can_transform(frame_a, frame_b, rospy.Time()):
+                if self.tf_buffer.can_transform(frame_a, frame_b, rclpy.Time()):
                     try:
-                        self.chain = self.tf_buffer._chain(frame_b, rospy.Time(), frame_a, rospy.Time(), frame_b)
+                        self.chain = self.tf_buffer._chain(frame_b, rclpy.Time(), frame_a, rclpy.Time(), frame_b)
                     except tf2_ros.TransformException as e:
-                        rospy.logwarn("Transform Exception", e)
+                        rclpy.logwarn("Transform Exception", e)
                     break
                 else:
                     time.sleep(0.1)
@@ -63,9 +63,9 @@ class TFMonitor:
         """
         delay_sum = 0
         update_chain = False
-        broadcaster = msg._connection_header['callerid']
+        broadcaster = msg._connection_header["callerid"]
         if is_static:
-            broadcaster += ' (static)'
+            broadcaster += " (static)"
 
         for transform in msg.transforms:
             # Update the information about this transform
@@ -87,7 +87,7 @@ class TFMonitor:
 
         if update_chain and self.use_chain:
             # Update the chain delay
-            tmp = self.tf_buffer.lookup_transform(self.frame_a, self.frame_b, rospy.Time())
+            tmp = self.tf_buffer.lookup_transform(self.frame_a, self.frame_b, rclpy.Time())
             delay = (self.get_clock().now() - tmp.header.stamp).to_sec()
             self.chain_delay.append(delay)
 
@@ -99,10 +99,10 @@ class TFMonitor:
             # This can happen when display_frames is called before the first tf callback
             return
 
-        print('\n\n')
+        print("\n\n")
         if event.last_real and event.current_real:
-            monitor_freq = round(1/(event.current_real - event.last_real).to_sec(), 3)
-            print(f'The tf_monitor is running with a display rate of {monitor_freq:.2f} Hz\n')
+            monitor_freq = round(1 / (event.current_real - event.last_real).to_sec(), 3)
+            print(f"The tf_monitor is running with a display rate of {monitor_freq:.2f} Hz\n")
 
         # For pretty-printing
         round_len = 10
@@ -118,48 +118,57 @@ class TFMonitor:
 
         if self.use_chain:
             # Print general information about the chain
-            print('Chain is:', ' -> '.join(self.chain))
+            print("Chain is:", " -> ".join(self.chain))
             average_delay = round(sum(self.chain_delay) / len(self.chain_delay), round_len)
             max_delay = round(max(self.chain_delay), round_len)
-            print(f'Average Net Delay: {average_delay:.{num_len}f}    Max Net Delay: {max_delay:.{num_len}f}')
-            print('\nFrames in chain:')
+            print(f"Average Net Delay: {average_delay:.{num_len}f}    Max Net Delay: {max_delay:.{num_len}f}")
+            print("\nFrames in chain:")
         else:
-            print('All Frames:')
+            print("All Frames:")
 
         # Print details about each frame
         for frame in sorted(frames):
             delay_list = self.frame_delay_dict[frame]
             average_delay = round(sum(delay_list) / len(delay_list), round_len)
             max_delay = round(max(delay_list), round_len)
-            print(f'Frame: {frame:{frame_len}}     Published by {self.frame_broadcaster_dict[frame]:<{broadcaster_len}}   '
-                  f'Average Delay: {average_delay:.{num_len}f}    Max Delay: {max_delay:.{num_len}f}')
+            print(
+                f"Frame: {frame:{frame_len}}     Published by {self.frame_broadcaster_dict[frame]:<{broadcaster_len}}   "
+                f"Average Delay: {average_delay:.{num_len}f}    Max Delay: {max_delay:.{num_len}f}"
+            )
 
         # Print details about each broadcaster
         if self.use_chain:
-            print('\nBroadcasters in chain:')
+            print("\nBroadcasters in chain:")
         else:
-            print('\nAll Broadcasters:')
+            print("\nAll Broadcasters:")
         for node in sorted(broadcasters):
-            average_delay = round(sum(self.broadcaster_delay_dict[node]) / len(self.broadcaster_delay_dict[node]), round_len)
+            average_delay = round(
+                sum(self.broadcaster_delay_dict[node]) / len(self.broadcaster_delay_dict[node]), round_len
+            )
             max_delay = round(max(self.broadcaster_delay_dict[node]), round_len)
             frequency_list = self.broadcaster_frequency_dict[node]
             frequency_out = round(len(frequency_list) / max(1e-8, (frequency_list[-1] - frequency_list[0])), round_len)
-            print(f'Node: {node:{broadcaster_len}} {frequency_out:.{num_len}f} Hz    '
-                  f'Average Delay: {average_delay:.{num_len}f}    Max Delay: {max_delay:.{num_len}f}')
+            print(
+                f"Node: {node:{broadcaster_len}} {frequency_out:.{num_len}f} Hz    "
+                f"Average Delay: {average_delay:.{num_len}f}    Max Delay: {max_delay:.{num_len}f}"
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     rclpy.init(args=None)
 
-    parser = argparse.ArgumentParser(usage='%(prog)s [-h] [--tf-topic TOPIC] [--display-rate HZ] [frame_a frame_b]\n',
-                                     description='Monitor the published tf messages. Without command line arguments, '
-                                                 'monitor all frames and their publishers, with two arguments '
-                                                 'monitor the chain between them.')
-    parser.add_argument('frame_a', nargs='?', help='The start frame of the monitored chain')
-    parser.add_argument('frame_b', nargs='?', help='The end frame of the monitored chain')
-    parser.add_argument('--tf-topic', required=False, default='tf', metavar='TOPIC', help='tf topic to listen to')
-    parser.add_argument('--display-rate', required=False, type=float, default=5.0, metavar='HZ',
-                        help='display update rate')
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s [-h] [--tf-topic TOPIC] [--display-rate HZ] [frame_a frame_b]\n",
+        description="Monitor the published tf messages. Without command line arguments, "
+        "monitor all frames and their publishers, with two arguments "
+        "monitor the chain between them.",
+    )
+    parser.add_argument("frame_a", nargs="?", help="The start frame of the monitored chain")
+    parser.add_argument("frame_b", nargs="?", help="The end frame of the monitored chain")
+    parser.add_argument("--tf-topic", required=False, default="tf", metavar="TOPIC", help="tf topic to listen to")
+    parser.add_argument(
+        "--display-rate", required=False, type=float, default=5.0, metavar="HZ", help="display update rate"
+    )
     args = parser.parse_args()
 
     if args.frame_a and not args.frame_b:
@@ -167,16 +176,16 @@ if __name__ == '__main__':
 
     use_chain = args.frame_a and args.frame_b
 
-    if args.tf_topic != 'tf' and use_chain:
+    if args.tf_topic != "tf" and use_chain:
         # This is not supported because it is not possible to change the tf topic for the ros tf listener
-        parser.error('Monitoring a specific chain is not supported with a custom tf topic')
+        parser.error("Monitoring a specific chain is not supported with a custom tf topic")
 
-    while self.get_clock().now() == rospy.Time() and rclpy.ok():
-        rospy.loginfo_throttle(10, 'tf_monitor waiting for time to be published')
+    while rclpy.get_clock().now() == rclpy.Time() and rclpy.ok():
+        rclpy.loginfo_throttle(10, "tf_monitor waiting for time to be published")
         time.sleep(0.1)
 
     monitor = TFMonitor(use_chain, args.frame_a, args.frame_b)
-    rospy.Subscriber(args.tf_topic, TFMessage, lambda msg: monitor.callback(msg, False))
-    rospy.Subscriber(args.tf_topic + '_static', TFMessage, lambda msg: monitor.callback(msg, True))
-    rospy.Timer(rospy.Duration(1/args.display_rate), monitor.display_frames)
-    rclpy.spin(self)
+    rclpy.Subscriber(args.tf_topic, TFMessage, lambda msg: monitor.callback(msg, False))
+    rclpy.Subscriber(args.tf_topic + "_static", TFMessage, lambda msg: monitor.callback(msg, True))
+    rclpy.Timer(rclpy.Duration(1 / args.display_rate), monitor.display_frames)
+    rclpy.spin()
